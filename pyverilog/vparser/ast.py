@@ -78,7 +78,8 @@ class Node(object):
         c = hash(self.children())
         return hash((s, c))
 
-
+    def get_type(self):
+        return str(self.__class__.__name__)
 # ------------------------------------------------------------------------------
 class Source(Node):
     attr_names = ('name',)

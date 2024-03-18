@@ -22,7 +22,8 @@ import re
 
 class Node(object):
     """ Abstact class for every element in parser """
-
+    def __init__(self):
+        self.id=None
     def children(self):
         pass
 

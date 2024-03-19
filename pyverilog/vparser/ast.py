@@ -23,7 +23,8 @@ import re
 class Node(object):
     """ Abstact class for every element in parser """
     def __init__(self):
-        self.id=None
+        self.node_id=None
+        self.parent=None
     def children(self):
         pass
 
@@ -31,7 +32,7 @@ class Node(object):
         indent = 2
         lead = ' ' * offset
 
-        buf.write(lead + self.__class__.__name__ + ': ')
+        buf.write(lead + self.__class__.__name__ +f"(id:{self.node_id})"+ ': ')
 
         if self.attr_names:
             if attrnames:

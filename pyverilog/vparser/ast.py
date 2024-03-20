@@ -921,7 +921,7 @@ class Block(Node):
 
     def __init__(self, statements, scope=None, lineno=0):
         self.lineno = lineno
-        self.statements = statements
+        self.statements = list(statements)
         self.scope = scope
 
     def children(self):

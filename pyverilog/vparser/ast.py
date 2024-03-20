@@ -24,7 +24,7 @@ class Node(object):
     """ Abstact class for every element in parser """
     def __init__(self):
         self.node_id=None
-        self.parent=None
+        self.parent_id=None
     def children(self):
         pass
 

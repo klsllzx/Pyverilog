@@ -876,7 +876,7 @@ class CaseStatement(Node):
     def __init__(self, comp, caselist, lineno=0):
         self.lineno = lineno
         self.comp = comp
-        self.caselist = caselist
+        self.caselist = list(caselist)
 
     def children(self):
         nodelist = []

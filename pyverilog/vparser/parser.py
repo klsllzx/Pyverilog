@@ -59,7 +59,7 @@ class VerilogParser(object):
             module=self,
             method="LALR",
             outputdir=outputdir,
-            debug=debug
+            debug=None
         )
 
     def _lexer_error_func(self, msg, line, column):
@@ -2340,7 +2340,8 @@ class VerilogCodeParser(object):
 
     def preprocess(self):
         self.preprocessor.preprocess()
-        text = open(self.preprocess_output).read()
+        with open(self.preprocess_output) as file:
+            text = file.read()
         os.remove(self.preprocess_output)
         return text
 

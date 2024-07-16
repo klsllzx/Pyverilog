@@ -74,8 +74,9 @@ class ConvertVisitor(object):
 
     def generic_visit(self, node):
         ret = []
-        for c in node.children():
-            ret.append(self.visit(c))
+        if node:
+            for c in node.children():
+                ret.append(self.visit(c))
         return ''.join(ret)
 
 
@@ -658,7 +659,7 @@ class ASTCodeGenerator(ConvertVisitor):
     def visit_SensList(self, node):
         filename = getfilename(node)
         template = self.get_template(filename)
-        items = [self.visit(item) for item in node.list]
+        items = [self.visit(item) for item in node.slist]
         template_dict = {
             'items': items,
             'len_items': len(items),

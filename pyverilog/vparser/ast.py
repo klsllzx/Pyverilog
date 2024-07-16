@@ -52,7 +52,7 @@ class Node(object):
         buf.write('\n')
 
         for c in self.children():
-            c.show(buf, offset + indent, attrnames, showlineno)
+            if c: c.show(buf, offset + indent, attrnames, showlineno)
 
     def __eq__(self, other):
         if type(self) != type(other):
@@ -103,7 +103,7 @@ class Description(Node):
 
     def __init__(self, definitions, lineno=0):
         self.lineno = lineno
-        self.definitions = definitions
+        self.definitions = list(definitions)
 
     def children(self):
         nodelist = []
@@ -120,7 +120,7 @@ class ModuleDef(Node):
         self.name = name
         self.paramlist = paramlist
         self.portlist = portlist
-        self.items = items
+        self.items = list(items)
         self.default_nettype = default_nettype
 
     def children(self):
@@ -139,7 +139,7 @@ class Paramlist(Node):
 
     def __init__(self, params, lineno=0):
         self.lineno = lineno
-        self.params = params
+        self.params = list(params)
 
     def children(self):
         nodelist = []
@@ -153,7 +153,8 @@ class Portlist(Node):
 
     def __init__(self, ports, lineno=0):
         self.lineno = lineno
-        self.ports = ports
+        self.ports = list(ports)
+
 
     def children(self):
         nodelist = []
@@ -381,9 +382,10 @@ class Supply(Parameter):
 class Decl(Node):
     attr_names = ()
 
-    def __init__(self, list, lineno=0):
+    def __init__(self, clist, lineno=0):
         self.lineno = lineno
-        self.list = list
+        self.list = list(clist)
+        self.node_id = None
 
     def children(self):
         nodelist = []
@@ -395,9 +397,9 @@ class Decl(Node):
 class Concat(Node):
     attr_names = ()
 
-    def __init__(self, list, lineno=0):
+    def __init__(self, clist, lineno=0):
         self.lineno = lineno
-        self.list = list
+        self.list = list(clist)
 
     def children(self):
         nodelist = []
@@ -753,14 +755,14 @@ class AlwaysLatch(Always):
 class SensList(Node):
     attr_names = ()
 
-    def __init__(self, list, lineno=0):
+    def __init__(self, slist, lineno=0):
         self.lineno = lineno
-        self.list = list
+        self.slist = list(slist)
 
     def children(self):
         nodelist = []
-        if self.list:
-            nodelist.extend(self.list)
+        if self.slist:
+            nodelist.extend(self.slist)
         return tuple(nodelist)
 
 
@@ -921,7 +923,7 @@ class Block(Node):
 
     def __init__(self, statements, scope=None, lineno=0):
         self.lineno = lineno
-        self.statements = list(statements)
+        self.statements = list(statements) # changed from tuple to list to support assignment
         self.scope = scope
 
     def children(self):
@@ -1010,7 +1012,7 @@ class InstanceList(Node):
     def __init__(self, module, parameterlist, instances, lineno=0):
         self.lineno = lineno
         self.module = module
-        self.parameterlist = parameterlist
+        self.parameterlist = list(parameterlist)
         self.instances = instances
 
     def children(self):
@@ -1029,8 +1031,10 @@ class Instance(Node):
         self.lineno = lineno
         self.module = module
         self.name = name
-        self.portlist = portlist
-        self.parameterlist = parameterlist
+        #self.portlist = portlist
+        #self.parameterlist = parameterlist
+        self.portlist = list(portlist)
+        self.parameterlist = list(parameterlist)
         self.array = array
 
     def children(self):
@@ -1152,7 +1156,8 @@ class GenerateStatement(Node):
 
     def __init__(self, items, lineno=0):
         self.lineno = lineno
-        self.items = items
+        self.items = list(items)
+
 
     def children(self):
         nodelist = []
@@ -1167,7 +1172,7 @@ class SystemCall(Node):
     def __init__(self, syscall, args, lineno=0):
         self.lineno = lineno
         self.syscall = syscall
-        self.args = args
+        self.args = list(args)
 
     def children(self):
         nodelist = []

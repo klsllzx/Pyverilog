@@ -49,6 +49,7 @@ class BindVisitor(NodeVisitor):
         self.renamecnt = 0
         self.default_nettype = 'wire'
 
+        self.init_flag=False
     def getDataflows(self):
         return self.dataflow
 
@@ -73,6 +74,13 @@ class BindVisitor(NodeVisitor):
 
     def visit_Reg(self, node):
         self.addTerm(node)
+    def visit_Decl(self, node):
+        if len(node.list)==2 and isinstance(list(node.list)[0],Reg) and isinstance(list(node.list)[1],Assign):
+            self.init_flag=True
+            self.generic_visit(node)
+            self.init_flag=False
+        else:
+            self.generic_visit(node)
 
     def visit_Wire(self, node):
         self.addTerm(node)
@@ -207,13 +215,15 @@ class BindVisitor(NodeVisitor):
         self.addBind(left, right, bindtype='assign')
 
     def visit_Initial(self, node):
-        pass
-        # label = self.labels.get( self.frames.getLabelKey('initial') )
-        # current = self.stackNextFrame(label, 'initial',
-        #                              generate=self.frames.isGenerate(),
-        #                              initial=True)
-        # self.generic_visit(node)
-        # self.frames.setCurrent(current)
+        self.init_flag=True
+        label = self.labels.get( self.frames.getLabelKey('initial') )
+        current = self.stackNextFrame(label, 'initial',
+                                     generate=self.frames.isGenerate(),
+                                     initial=True)
+        self.generic_visit(node)
+        self.frames.setCurrent(current)
+        self.init_flag=False
+
 
     def visit_Always(self, node):
         label = self.labels.get(self.frames.getLabelKey('always'))
@@ -892,7 +902,6 @@ class BindVisitor(NodeVisitor):
             self.addDataflow_blocking(dst, right, lscope, rscope, alwaysinfo)
         else:
             self.addDataflow(dst, right, lscope, rscope, alwaysinfo, bindtype)
-
     def addInstanceParameterBind(self, param, name=None):
         lscope = self.frames.getCurrent()
         rscope = lscope[:-1]
@@ -936,25 +945,30 @@ class BindVisitor(NodeVisitor):
     def addDataflow(self, dst, right, lscope, rscope, alwaysinfo=None, bindtype=None):
         condlist, flowlist = self.getCondflow(lscope)
         raw_tree = self.getTree(right, rscope)
-        self.setDataflow(dst, raw_tree, condlist, flowlist, alwaysinfo, bindtype)
+        if self.init_flag:
+            self.setDataflow_rename_init(dst, raw_tree, condlist, flowlist, lscope, alwaysinfo)
+        else:
+            self.setDataflow(dst, raw_tree, condlist, flowlist, alwaysinfo, bindtype)
 
     def addDataflow_blocking(self, dst, right, lscope, rscope, alwaysinfo):
         condlist, flowlist = self.getCondflow(lscope)
         raw_tree = self.getTree(right, rscope)
+        if self.init_flag:
+            self.setDataflow_rename_init(dst, raw_tree, condlist, flowlist, lscope, alwaysinfo)
+        else:
+            self.setDataflow_rename(dst, raw_tree, condlist, flowlist, lscope, alwaysinfo)
 
-        self.setDataflow_rename(dst, raw_tree, condlist, flowlist, lscope, alwaysinfo)
-
-        if len(dst) == 1:  # set genvar value to the constant table
-            name = dst[0][0]
-            if signaltype.isGenvar(self.getTermtype(name)):
-                value = self.optimize(raw_tree)
-                self.setConstant(name, value)
-            else:  # for "for-statement"
-                value = self.optimize(raw_tree)
-                if isinstance(value, DFEvalValue):
+            if len(dst) == 1:  # set genvar value to the constant table
+                name = dst[0][0]
+                if signaltype.isGenvar(self.getTermtype(name)):
+                    value = self.optimize(raw_tree)
                     self.setConstant(name, value)
-                else:
-                    self.resetConstant(name)
+                else:  # for "for-statement"
+                    value = self.optimize(raw_tree)
+                    if isinstance(value, DFEvalValue):
+                        self.setConstant(name, value)
+                    else:
+                        self.resetConstant(name)
 
     def getCondflow(self, scope):
         condlist = self.getCondlist(scope)
@@ -1415,6 +1429,13 @@ class BindVisitor(NodeVisitor):
         self.setRenamedTree(renamed_dst, raw_tree, alwaysinfo)
         self.setRenamedFlow(dst, renamed_dst, condlist, flowlist, scope, alwaysinfo)
 
+
+    def setDataflow_rename_init(self, dst, raw_tree, condlist, flowlist,
+                           scope, alwaysinfo=None):
+        renamed_dst = self.getRenamedDst_init(dst)
+        self.setRenamedTree(renamed_dst, raw_tree, alwaysinfo)
+
+
     def setNonblockingAssign(self, name, dst, raw_tree, msb, lsb, ptr,
                              part_msb, part_lsb, alwaysinfo):
         tree = raw_tree
@@ -1439,7 +1460,24 @@ class BindVisitor(NodeVisitor):
             newd = (renamed_dname,) + d[1:]
             renamed_dst += (newd,)
         return renamed_dst
+    def getRenamedDst_init(self, dst):
+        renamed_dst = ()
+        for d in dst:
+            dname = d[0]
+            samename_exists = True
+            while samename_exists:
+                renamed_dname = self.renameVar(dname)
+                samename_exists = self.dataflow.hasTerm(renamed_dname)
+            term = self.dataflow.getTerm(dname)
+            newterm = copy.deepcopy(term)
 
+            newterm.name = dname
+            newterm.termtype = set(['Init'])
+
+            self.dataflow.addTerm(renamed_dname, newterm)
+            newd = (renamed_dname,) + d[1:]
+            renamed_dst += (newd,)
+        return renamed_dst
     def setRenamedTree(self, renamed_dst, raw_tree, alwaysinfo):
         for name, msb, lsb, ptr, part_msb, part_lsb in renamed_dst:
             tree = raw_tree
